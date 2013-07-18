@@ -34,6 +34,50 @@ std::map<std::string, int> filter_map;
 
 TString filter = "";
 
+unsigned int counter = 0;
+
+void exportimg(TObject * obj, TDirectory * dir)
+{
+	TCanvas * can = nullptr;
+
+	if (has_filter and filter_map.find(obj->GetName()) == filter_map.end())
+		return;
+	//	continue;
+
+	dir->GetObject(obj->GetName(), can);
+
+	can->Draw();
+	can->SetCanvasSize(flag_width, flag_height);
+	std::cout << "Exporting " << can->GetName() << std::endl;
+
+	if (flag_png) RootTools::ExportPNG((TCanvas*)can, outpath);
+	if (flag_eps) RootTools::ExportEPS((TCanvas*)can, outpath);
+	if (flag_pdf) RootTools::ExportPDF((TCanvas*)can, outpath);
+	++counter;
+}
+
+void browseDir(TDirectory * dir)
+{
+	TKey * key;
+	TIter nextkey(dir->GetListOfKeys());
+	while ((key = (TKey*)nextkey())) {
+// 		const char * classname = key->GetClassName();
+// 		TClass *cl = gROOT->GetClass(classname);
+// 		if (!cl) continue;
+// 		PR(classname);
+
+		TObject *obj = key->ReadObj();
+// 		PR("MemSrc");gDirectory->ls("-d");
+		if (obj->InheritsFrom("TDirectory")) {
+			TDirectory * dir = (TDirectory*)obj;
+			browseDir(dir);
+		} else
+		if (obj->InheritsFrom("TCanvas")) {
+			exportimg(obj, dir);
+		}
+	}
+}
+
 bool extractor(const std::string & file) {
 	TFile * f = TFile::Open(file.c_str(), "READ");
 	if (!f->IsOpen()) {
@@ -44,37 +88,7 @@ bool extractor(const std::string & file) {
 //	target->cd();
 	f->cd();
 
-	int counter = 0;
-	TKey * key;
-	TIter nextkey(f->GetListOfKeys());
-	while ((key = (TKey*)nextkey())) {
-// 		const char * classname = key->GetClassName();
-// 		TClass *cl = gROOT->GetClass(classname);
-// 		if (!cl) continue;
-// 		PR(classname);
-
-		TObject *obj = key->ReadObj();
-// 		PR("MemSrc");gDirectory->ls("-d");
-		if (obj->InheritsFrom("TCanvas")) {
-			TCanvas * can = nullptr;
-
-			if (has_filter and filter_map.find(obj->GetName()) == filter_map.end())
-				continue;
-
-			f->GetObject(obj->GetName(), can);
-
-			can->Draw();
-
-			can->SetCanvasSize(flag_width, flag_height);
-
-			std::cout << "Exporting " << can->GetName() << std::endl;
-
-			if (flag_png) RootTools::ExportPNG((TCanvas*)can, outpath);
-			if (flag_eps) RootTools::ExportEPS((TCanvas*)can, outpath);
-			if (flag_pdf) RootTools::ExportPDF((TCanvas*)can, outpath);
-			++counter;
-		}
-	}
+	browseDir(f);
 
 	std::cout << "Total: " << counter << std::endl;
 	return true;

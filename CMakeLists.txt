@@ -73,7 +73,7 @@ link_directories(${LIB_DIRS_G})
 
 add_executable(imgextractor ${imgextractor_SRCS})
 
-target_link_libraries(imgextractor RootTools ASImage)
+target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES})
 
 # ${${BIN_PREFIX}_corrdet}
 install(TARGETS
