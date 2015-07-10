@@ -2,16 +2,20 @@
 #include <string>
 #include <iostream>
 #include <map>
+#include <sys/stat.h>
 
 #include <TCanvas.h>
 #include <TFile.h>
 #include <TKey.h>
 #include <TROOT.h>
+#include <TF1.h>
 
 #include <TASImage.h>
 #include <TString.h>
 
 #include <TApplication.h>
+#include <TStyle.h>
+#include <TSystem.h>
 
 #include <RootTools.h>
 
@@ -36,6 +40,19 @@ TString filter = "";
 
 unsigned int counter = 0;
 
+struct CanvasCfg
+{
+	std::string cn;
+	int w;
+	int h;
+};
+
+inline bool file_exists(const std::string & file)
+{
+	struct stat buffer;
+	return (stat(file.c_str(), &buffer) == 0);
+}
+
 void exportimg(TObject * obj, TDirectory * dir)
 {
 	TCanvas * can = nullptr;
@@ -56,16 +73,12 @@ void exportimg(TObject * obj, TDirectory * dir)
 	++counter;
 }
 
-void browseDir(TDirectory * dir)
+void browseDir(TDirectory * dir, std::vector<std::string> * filters = nullptr)
 {
 	TKey * key;
 	TIter nextkey(dir->GetListOfKeys());
-	while ((key = (TKey*)nextkey())) {
-// 		const char * classname = key->GetClassName();
-// 		TClass *cl = gROOT->GetClass(classname);
-// 		if (!cl) continue;
-// 		PR(classname);
-
+	while ((key = (TKey*)nextkey()))
+	{
 		TObject *obj = key->ReadObj();
 // 		PR("MemSrc");gDirectory->ls("-d");
 		if (obj->InheritsFrom("TDirectory")) {
@@ -80,12 +93,27 @@ void browseDir(TDirectory * dir)
 
 bool extractor(const std::string & file) {
 	TFile * f = TFile::Open(file.c_str(), "READ");
-	if (!f->IsOpen()) {
+
+	if (!f->IsOpen())
+	{
 		std::cerr << "File " << file << " not open!" << std::endl;
 		return false;
 	}
 
-//	target->cd();
+	TSystem sys;
+
+	std::string dir_name = sys.DirName(file.c_str());
+	std::string file_basename = sys.BaseName(file.c_str());
+
+	size_t last_dot = file_basename.find_last_of('.');
+// 	size_t ext_len = file_basename.end() - last_dot;
+	std::string imgcfg_name = dir_name + "/." + file_basename.replace(last_dot, std::string::npos, ".iecfg");
+	PR(imgcfg_name);
+
+	if (file_exists(imgcfg_name))
+	{
+	}
+
 	f->cd();
 
 	browseDir(f);
@@ -122,8 +150,6 @@ int main(int argc, char ** argv) {
 
 		switch (c) {
 			case 0:
-// 				PR(long_options[option_index].name);
-// 				PR(*(long_options[option_index].flag));
 				if (lopt[option_index].flag != 0)
 					break;
 				printf ("option %s", lopt[option_index].name);
@@ -159,12 +185,14 @@ int main(int argc, char ** argv) {
 	target = gDirectory;
 
 	RootTools::NicePalette();
+	RootTools::MyMath();
 
 	std::cout << "Filtering for :" << std::endl;
 	for (std::map<std::string,int>::iterator it = filter_map.begin(); it != filter_map.end(); ++it)
 		std::cout << " " << it->first << std::endl;
 
-	while (optind < argc) {
+	while (optind < argc)
+	{
 		std::cout << "Extracting from " << argv[optind] << std::endl;
 		extractor(argv[optind++]);
 	}

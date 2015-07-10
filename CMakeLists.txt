@@ -7,6 +7,7 @@ set(CMAKE_CXX_FLAGS "-g --std=c++0x ${CMAKE_CXX_FLAGS}")
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Modules" ${CMAKE_MODULE_PATH})
 find_package(ROOT)
 #find_package(HYDRA)
+find_package(jsoncpp)
 
 set(PROJECT_VERSION_MAJOR "1")
 set(PROJECT_VERSION_MINOR "1")
@@ -73,7 +74,7 @@ link_directories(${LIB_DIRS_G})
 
 add_executable(imgextractor ${imgextractor_SRCS})
 
-target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES})
+target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES} jsoncpp_lib)
 
 # ${${BIN_PREFIX}_corrdet}
 install(TARGETS
