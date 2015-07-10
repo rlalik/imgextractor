@@ -48,7 +48,7 @@ set(imgextractor_SRCS imgextract.cpp)
 
 add_executable(imgextractor ${imgextractor_SRCS})
 
-target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES} jsoncpp_lib)
+target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES} jsoncpp)
 
 # ${${BIN_PREFIX}_corrdet}
 install(TARGETS
