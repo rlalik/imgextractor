@@ -1,76 +1,50 @@
-project(pp35DataAnalysis)
+cmake_minimum_required(VERSION 2.6)
+project(ImgExtractor C CXX)
+set(CAPS_PROJECT_NAME IMGEXTRACTOR)
 
-cmake_minimum_required(VERSION 2.8)
+##### the version number
+set (VERSION_MAJOR 0)
+set (VERSION_MINOR 1)
+set (VERSION_PATCH 1)
+set(PROJECT_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 
-set(CMAKE_CXX_FLAGS "-g --std=c++0x ${CMAKE_CXX_FLAGS}")
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	set(ARCH_LIB lib64)
+else()
+	set(ARCH_LIB lib32)
+	set(FIND_LIBRARY_USE_LIB64_PATHS OFF)
+endif()
 
-set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Modules" ${CMAKE_MODULE_PATH})
-find_package(ROOT)
-#find_package(HYDRA)
-find_package(jsoncpp)
+set(LIB_INSTALL_DIR ${ARCH_LIB} CACHE STRING "library location")
 
-set(PROJECT_VERSION_MAJOR "1")
-set(PROJECT_VERSION_MINOR "1")
-set(PROJECT_VERSION_PATCH "0")
-set(PROJECT_VERSION_COUNT 1)
-set(PROJECT_VERSION
-	"${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+##### set paths
+if(WIN32 AND NOT CYGWIN)
+	set(DEF_CMAKE_INSTALL_CMAKEDIR cmake)
+else()
+	set(DEF_CMAKE_INSTALL_CMAKEDIR lib/cmake/${CMAKE_PROJECT_NAME})
+endif()
+set(CMAKE_INSTALL_CMAKEDIR ${DEF_CMAKE_INSTALL_CMAKEDIR} CACHE PATH "Installation directory for CMake files")
+set(CMAKE_INSTALL_BINDIR "bin" CACHE PATH "object code libraries (lib)")
+set(CMAKE_INSTALL_LIBDIR "${LIB_INSTALL_DIR}" CACHE PATH "object code libraries (lib)")
+set(CMAKE_INSTALL_INCLUDEDIR "include" CACHE PATH "object code libraries (lib)")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-set(PROJECT_VENDOR "RLalik")
-set(PROJECT_COPYRIGHT_YEAR "2013")
-# set(PROJECT_DOMAIN_FIRST "gasik")
-# set(PROJECT_DOMAIN_SECOND "com")
-# set(PROJECT_DOMAIN "${PROJECT_DOMAIN_FIRST}.${PROJECT_DOMAIN_SECOND}")
+##### find ROOT
+list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
+find_package(ROOT QUIET
+	REQUIRED COMPONENTS Core  RIO Net Hist Graf Graf3d Gpad Tree Rint Postscript Matrix Physics MathCore Thread
+	OPTIONAL_COMPONENTS Cling Cint)
 
-# Offer the user the choice of overriding the installation directories
-set(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
-set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
-set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
+include(${ROOT_USE_FILE})
 
-set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH "Installation directory for CMake files")
+find_package(RootTools)
 
-# Make relative paths absolute (needed later on)
-foreach(p LIB BIN INCLUDE CMAKE)
-	set(var INSTALL_${p}_DIR)
-	if(NOT IS_ABSOLUTE "${${var}}")
-		set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
-	endif()
-endforeach()
-
-if ( CMAKE_COMPILER_IS_GNUCXX OR APPLE )
-	add_definitions(-Wall -Wextra)
-	if ( CMAKE_BUILD_RELEASE )
-		add_definitions(-Werror)
-	endif ()
-endif ()
-
-add_definitions(-DPROJECT_VERSION=\"${PROJECT_VERSION}\")
-
-##### find programs
-
-find_path(roottools_LIBS libRootTools.so PATHS ${RT_LIB_DIR} PATH_SUFFIXES lib)
-if (NOT roottools_LIBS)
-        message(FATAL_ERROR "Unable to find libRootTools.so")
-else ()
-        message(STATUS "Found libRootTools.so in ${roottools_LIBS}")
-endif (NOT roottools_LIBS)
-
+##### directories
+include_directories(${ROOT_INCLUDE_DIR} ${ROOTTOOLS_INCLUDE_DIR})
+link_directories(${ROOT_LIBRARIES_DIR} ${ROOTTOOLS_LIBRARY_DIR})
 
 set(imgextractor_SRCS imgextract.cpp)
-
-set (INC_DIRS_G
-	${ROOT_INCLUDES}
-	${roottools_LIBS}/../include
-	${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-set (LIB_DIRS_G
-	${ROOT_LIBRARY_DIR}
-	${roottools_LIBS}
-)
-
-include_directories(${INC_DIRS_G})
-link_directories(${LIB_DIRS_G})
 
 add_executable(imgextractor ${imgextractor_SRCS})
 
@@ -79,10 +53,10 @@ target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES} jsoncpp_l
 # ${${BIN_PREFIX}_corrdet}
 install(TARGETS
 		imgextractor
-	RUNTIME DESTINATION ${INSTALL_BIN_DIR}
-	LIBRARY DESTINATION ${INSTALL_LIB_DIR}
-	ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
-	PUBLIC_HEADER DESTINATION ${INSTALL_INCLUDE_DIR})
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 ####################################################
 # SUMMARY
