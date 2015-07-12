@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <sys/stat.h>
 
@@ -33,19 +34,23 @@ std::string outpath = "./";
 
 TDirectory * target;
 
-bool has_filter = false;
-std::map<std::string, int> filter_map;
+struct CanvasCfg
+{
+// 	std::string cn;
+	int cnt;
+	int w;
+	int h;
+};
+
+enum FilterState { FS_None, FS_Modify, FS_Exclusive };
+FilterState global_filter = FS_None;
+
+typedef std::map<std::string, CanvasCfg> FilterMap;
+FilterMap global_map;
 
 TString filter = "";
 
 unsigned int counter = 0;
-
-struct CanvasCfg
-{
-	std::string cn;
-	int w;
-	int h;
-};
 
 inline bool file_exists(const std::string & file)
 {
@@ -53,18 +58,16 @@ inline bool file_exists(const std::string & file)
 	return (stat(file.c_str(), &buffer) == 0);
 }
 
-void exportimg(TObject * obj, TDirectory * dir)
+void exportimg(TObject * obj, TDirectory * dir, const CanvasCfg & ccfg)
 {
 	TCanvas * can = nullptr;
 
-	if (has_filter and filter_map.find(obj->GetName()) == filter_map.end())
-		return;
 	//	continue;
 
 	dir->GetObject(obj->GetName(), can);
 
 	can->Draw();
-	can->SetCanvasSize(flag_width, flag_height);
+	can->SetCanvasSize(ccfg.w, ccfg.h);
 	std::cout << "Exporting " << can->GetName() << std::endl;
 
 	if (flag_png) RootTools::ExportPNG((TCanvas*)can, outpath);
@@ -73,25 +76,174 @@ void exportimg(TObject * obj, TDirectory * dir)
 	++counter;
 }
 
-void browseDir(TDirectory * dir, std::vector<std::string> * filters = nullptr)
+void browseDir(TDirectory * dir, FilterState & fs, const FilterMap & filter_map)
 {
 	TKey * key;
 	TIter nextkey(dir->GetListOfKeys());
 	while ((key = (TKey*)nextkey()))
 	{
 		TObject *obj = key->ReadObj();
-// 		PR("MemSrc");gDirectory->ls("-d");
-		if (obj->InheritsFrom("TDirectory")) {
+		if (obj->InheritsFrom("TDirectory"))
+		{
 			TDirectory * dir = (TDirectory*)obj;
-			browseDir(dir);
-		} else
-		if (obj->InheritsFrom("TCanvas")) {
-			exportimg(obj, dir);
+			browseDir(dir, fs, filter_map);
+		}
+		else
+		if (obj->InheritsFrom("TCanvas"))
+		{
+			CanvasCfg ccfg = { .cnt = 1, .w = flag_width, .h = flag_height };
+			FilterMap::const_iterator fit = filter_map.find(obj->GetName());
+			bool found_fit = ( fit != filter_map.end() );
+
+			if (fs == FS_Exclusive)
+			{
+				if (!found_fit)
+					continue;
+
+				if (fit->second.cnt <= 0)
+					continue;
+
+				ccfg = fit->second;
+				exportimg(obj, dir, ccfg);
+			}
+			else if (fs == FS_Modify)
+			{
+				if (found_fit)
+				{
+					if (fit->second.cnt < 0)
+						continue;
+				}
+
+				ccfg = fit->second;
+				exportimg(obj, dir, ccfg);
+			}
+			else
+			{
+				exportimg(obj, dir, ccfg);
+			}
 		}
 	}
 }
 
-bool extractor(const std::string & file) {
+FilterState parser(const std::string & fname, FilterMap & local_fm)
+{
+	// local FilterMap to be add to global one;
+	std::string buff;
+	std::string local_name;
+
+	FilterState fs = FS_Modify;
+
+	if (file_exists(fname))
+	{
+		std::cout << "Parsing config file " << fname << std::endl;
+		std::ifstream local_fm_file(fname.c_str());
+
+		while (!local_fm_file.eof())
+		{
+			std::getline(local_fm_file, buff);
+			if (!buff.length())
+				continue;
+
+			// convert tabs into spaces
+			size_t tab_pos = 0;
+			while (tab_pos = buff.find_first_of('\t', tab_pos), tab_pos != buff.npos)
+			{
+				buff.replace(tab_pos, 1, " ");
+			}
+
+			// find firts non-white character in the line
+			// it should be hist name or '*'
+			size_t pos_name = buff.find_first_not_of(" \t", 0);
+			if (pos_name == buff.npos)
+				continue;
+
+			size_t pos = buff.find_first_of(" \t-", pos_name);
+			local_name = buff.substr(pos_name, pos - pos_name).c_str();
+
+			// local setting for current line
+			CanvasCfg local_cancfg = { .cnt = 1, .w = flag_width, .h = flag_height };
+
+			// parse rest of the line to search for w, h, -
+			while (pos != buff.npos)
+			{
+				pos = buff.find_first_not_of(" \t", pos);
+
+				char test_char = buff[pos];
+
+				if (test_char == '-')
+				{
+					if (local_name == "*")
+					{
+						fs = FS_Exclusive;
+					}
+					else
+					{
+						local_cancfg.cnt = -99;
+					}
+					++pos;
+				}
+				else if (test_char == 'w')
+				{
+					if (buff[pos+1] == '=')
+					{
+						int old_pos = pos+2;
+						pos = buff.find_first_not_of("0123456789", pos+2);
+						std::string number = buff.substr(old_pos, pos - old_pos);
+						int val_tmp = atoi(number.c_str());
+						if (val_tmp)
+							local_cancfg.w = val_tmp;
+					}
+					else
+					{
+						std::cerr << "Parsing error, breaking parser" << std::endl;
+						continue;
+					}
+				}
+				else if (test_char == 'h')
+				{
+					if (buff[pos+1] == '=')
+					{
+						int old_pos = pos+2;
+						pos = buff.find_first_not_of("0123456789", pos+2);
+						std::string number = buff.substr(old_pos, pos - old_pos);
+						int val_tmp = atoi(number.c_str());
+						if (val_tmp)
+							local_cancfg.h = val_tmp;
+					}
+					else
+					{
+						std::cerr << "Parsing error, breaking parser" << std::endl;
+						continue;
+					}
+				}
+				else
+				{
+					if (pos == buff.npos)
+						break;
+
+					std::cerr << "Parsing error at:" << std::endl << " " << buff << std::endl;
+					std::fill_n(std::ostream_iterator<char>(std::cerr), pos, ' ');
+					std::cerr << "^" << std::endl << " breaking parser" << std::endl;
+					break;
+				}
+			}
+
+			local_fm[local_name] = local_cancfg;
+		}
+	}
+
+// 	FilterMap & total_map = global_map;
+// 	for (FilterMap::const_iterator it = global_map.begin(); it != global_map.end(); ++it)
+// 		total_map[it->first] = it->second;
+
+	if (!local_fm.size())
+		return FS_None;
+
+	return fs;
+}
+
+bool extractor(const std::string & file)
+{
 	TFile * f = TFile::Open(file.c_str(), "READ");
 
 	if (!f->IsOpen())
@@ -108,15 +260,29 @@ bool extractor(const std::string & file) {
 	size_t last_dot = file_basename.find_last_of('.');
 // 	size_t ext_len = file_basename.end() - last_dot;
 	std::string imgcfg_name = dir_name + "/." + file_basename.replace(last_dot, std::string::npos, ".iecfg");
-	PR(imgcfg_name);
 
-	if (file_exists(imgcfg_name))
+	FilterState local_filter = global_filter;
+	FilterMap local_map = global_map;
+
+	if (!global_map.size())
 	{
+		local_filter = parser(imgcfg_name, local_map);
+	}
+
+	std::cout << "Maps summary for mode " << local_filter << std::endl;
+	FilterMap & total_map = local_map;
+
+	for (FilterMap::const_iterator it = total_map.begin(); it != total_map.end(); ++it)
+	{
+		if (it->second.cnt > 0)
+			std::cout << " " << it->first << " [" << it->second.cnt << "] w = " << it->second.w << " h = " << it->second.h << std::endl;
+		else
+			std::cout << " " << it->first << " [" << it->second.cnt << "] " << std::endl;
 	}
 
 	f->cd();
 
-	browseDir(f);
+	browseDir(f, local_filter, local_map);
 
 	std::cout << "Total: " << counter << std::endl;
 	return true;
@@ -167,8 +333,11 @@ int main(int argc, char ** argv) {
 				flag_height = atoi(optarg);
 				break;
 			case 'f':
-				has_filter = true;
-				++filter_map[optarg];
+				global_filter = FS_Exclusive;
+				{
+					CanvasCfg cc = { .cnt = 99, .w = flag_width, .h = flag_height };
+					global_map[optarg] = cc;
+				}
 				break;
 			case '?':
 // 				Usage();
@@ -188,7 +357,7 @@ int main(int argc, char ** argv) {
 	RootTools::MyMath();
 
 	std::cout << "Filtering for :" << std::endl;
-	for (std::map<std::string,int>::iterator it = filter_map.begin(); it != filter_map.end(); ++it)
+	for (FilterMap::iterator it = global_map.begin(); it != global_map.end(); ++it)
 		std::cout << " " << it->first << std::endl;
 
 	while (optind < argc)

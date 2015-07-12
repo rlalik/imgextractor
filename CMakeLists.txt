@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(ImgExtractor C CXX)
+project(ImgExtractor CXX)
 set(CAPS_PROJECT_NAME IMGEXTRACTOR)
 
 ##### the version number
