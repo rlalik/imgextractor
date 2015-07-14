@@ -1,0 +1,110 @@
+1. Description
+=======================================
+
+Program extracts all canvases from the root file and writes
+them as images on the disk. Default width and height is 800x600,
+and can be modified in per file config file. Program can generate
+png (default), eps and pdf formats.
+Advances usage is shown in section 4.
+
+2. Requirements
+=======================================
+
+This software requires RootTools library installed. See
+
+ http://github.com/dziadu/RootTools
+
+
+3. Installation
+=======================================
+
+Fetch sources from git:
+
+ git clone http://github.com/dziadu/imgextractor
+
+Prepare build directory:
+
+ mkdir -p imgextractor/build
+ cd imgextractor/build
+
+Run cmake to prepare Makefile. Default installing location
+is /usr/local (requires root priviledges). Custom location
+can be given with optional CMAKE_INSTALL_PREFIX variable
+(can be removed if default location is used).
+On native 32 or 64 bit systems:
+
+ cmake .. -DCMAKE_INSTALL_PREFIX=custom_location
+
+On 64 bit systems for 32 bit libraries:
+
+ CXX="g++ -m32" cmake .. -DCMAKE_INSTALL_PREFIX=custom_location
+
+Compile and install:
+
+ make
+ make install
+
+
+4. Usage
+=======================================
+
+ imgextractor [optional arguments] [filters] root.file
+
+where:
+ * optional arguments:
+
+  --png                  : export png file (default)
+  --eps                  : export eps file
+  --pdf                  : export pdf file
+  --width|-w pixels      : width of exported images (default 800)
+  --height|-h pixels     : height of exported images (default 600)
+  --dir|-d directory     : location to write output files (default
+                           is the directory of root file)
+
+ * filters
+
+ --filter|-f canvas_name : canvas name to be exported, filters are aggregated
+
+Using filters will expoert only canvases given in the command line,
+any other will be ignored. More advanced export configuration is provided by
+iecfg config file. Using filters disables parsing of iecfg files (section 5).
+
+5. Config files
+=======================================
+
+Config file is created for each root file separetly. It is hidden file
+with filename the same like root file and extension iecfg, e.g. for root
+file foo.root the config file is .foo.iecfg.
+Each line contain first canvas name and then options, which are:
+ -          : exclude this canvas from export
+ w=pixels   : eidth of export
+ h=pixels   : height of export
+
+If canvas name is '*' then options are applying to all canvase.
+If '-' is used for '*' then all canvases are excluded and only
+canvases for which entry exists are exported
+
+Example:
+Let's have a root file foo.root with three canvases inside:
+ can_bar1
+ can_bar2
+ can_bar3
+
+We want to export arr with width of 2000 but only can_bar2 with 3000, then we write:
+
+ * w=2000
+ can_bar2 w=3000
+
+If we want to exclude can_bar3 from export
+
+ can_bar3 -
+
+If we want to export only
+
+All three are exported to png format 800x600 big.
+
+Now, lets assume that we want only can_bar1 and can_bar3 be exported, width another sizes
+
+ * -
+ can_bar1 h=1000
+ can_bar3 h=2000
