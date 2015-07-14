@@ -62,8 +62,6 @@ void exportimg(TObject * obj, TDirectory * dir, const CanvasCfg & ccfg)
 {
 	TCanvas * can = nullptr;
 
-	//	continue;
-
 	dir->GetObject(obj->GetName(), can);
 
 	can->Draw();
@@ -83,6 +81,7 @@ void browseDir(TDirectory * dir, FilterState & fs, const FilterMap & filter_map)
 	while ((key = (TKey*)nextkey()))
 	{
 		TObject *obj = key->ReadObj();
+
 		if (obj->InheritsFrom("TDirectory"))
 		{
 			TDirectory * dir = (TDirectory*)obj;
@@ -91,7 +90,7 @@ void browseDir(TDirectory * dir, FilterState & fs, const FilterMap & filter_map)
 		else
 		if (obj->InheritsFrom("TCanvas"))
 		{
-			CanvasCfg ccfg = { .cnt = 1, .w = flag_width, .h = flag_height };
+			CanvasCfg ccfg = { 1, flag_width, flag_height };
 			FilterMap::const_iterator fit = filter_map.find(obj->GetName());
 			bool found_fit = ( fit != filter_map.end() );
 
@@ -129,7 +128,11 @@ FilterState parser(const std::string & fname, FilterMap & local_fm)
 {
 	// local FilterMap to be add to global one;
 	std::string buff;
-	std::string local_name;
+	std::string inline_name;
+	bool parsing_local = false;
+
+	// local setting for current file
+	CanvasCfg local_cancfg = { 1, flag_width, flag_height };
 
 	FilterState fs = FS_Modify;
 
@@ -158,10 +161,12 @@ FilterState parser(const std::string & fname, FilterMap & local_fm)
 				continue;
 
 			size_t pos = buff.find_first_of(" \t-", pos_name);
-			local_name = buff.substr(pos_name, pos - pos_name).c_str();
+			inline_name = buff.substr(pos_name, pos - pos_name).c_str();
 
-			// local setting for current line
-			CanvasCfg local_cancfg = { .cnt = 1, .w = flag_width, .h = flag_height };
+			parsing_local = (inline_name == "*");
+
+			// inline setting for current line
+			CanvasCfg inline_cancfg = local_cancfg;
 
 			// parse rest of the line to search for w, h, -
 			while (pos != buff.npos)
@@ -172,14 +177,11 @@ FilterState parser(const std::string & fname, FilterMap & local_fm)
 
 				if (test_char == '-')
 				{
-					if (local_name == "*")
-					{
+					if (parsing_local)
 						fs = FS_Exclusive;
-					}
 					else
-					{
-						local_cancfg.cnt = -99;
-					}
+						inline_cancfg.cnt = -99;
+
 					++pos;
 				}
 				else if (test_char == 'w')
@@ -191,7 +193,7 @@ FilterState parser(const std::string & fname, FilterMap & local_fm)
 						std::string number = buff.substr(old_pos, pos - old_pos);
 						int val_tmp = atoi(number.c_str());
 						if (val_tmp)
-							local_cancfg.w = val_tmp;
+								inline_cancfg.w = val_tmp;
 					}
 					else
 					{
@@ -208,7 +210,7 @@ FilterState parser(const std::string & fname, FilterMap & local_fm)
 						std::string number = buff.substr(old_pos, pos - old_pos);
 						int val_tmp = atoi(number.c_str());
 						if (val_tmp)
-							local_cancfg.h = val_tmp;
+							inline_cancfg.h = val_tmp;
 					}
 					else
 					{
@@ -228,7 +230,13 @@ FilterState parser(const std::string & fname, FilterMap & local_fm)
 				}
 			}
 
-			local_fm[local_name] = local_cancfg;
+			if (parsing_local)
+			{
+				local_cancfg.w = inline_cancfg.w;
+				local_cancfg.h = inline_cancfg.h;
+			}
+
+			local_fm[inline_name] = inline_cancfg;
 		}
 	}
 
@@ -335,7 +343,7 @@ int main(int argc, char ** argv) {
 			case 'f':
 				global_filter = FS_Exclusive;
 				{
-					CanvasCfg cc = { .cnt = 99, .w = flag_width, .h = flag_height };
+					CanvasCfg cc = { 99, flag_width, flag_height };
 					global_map[optarg] = cc;
 				}
 				break;
@@ -356,9 +364,15 @@ int main(int argc, char ** argv) {
 	RootTools::NicePalette();
 	RootTools::MyMath();
 
-	std::cout << "Filtering for :" << std::endl;
-	for (FilterMap::iterator it = global_map.begin(); it != global_map.end(); ++it)
-		std::cout << " " << it->first << std::endl;
+	if ( ! (flag_png | flag_eps | flag_pdf) )
+		flag_png = 1;
+
+	if (global_map.size())
+	{
+		std::cout << "Filtering for :" << std::endl;
+		for (FilterMap::iterator it = global_map.begin(); it != global_map.end(); ++it)
+			std::cout << " " << it->first << std::endl;
+	}
 
 	while (optind < argc)
 	{
