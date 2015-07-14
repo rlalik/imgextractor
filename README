@@ -99,7 +99,7 @@ If we want to exclude can_bar3 from export
 
  can_bar3 -
 
-Now, lets assume that we want only can_bar1 and can_bar3 be exported, width another sizes
+Now, lets assume that we want only can_bar1 and can_bar3 be exported, with different sizes
 
  * -
  can_bar1 h=1000
