@@ -64,7 +64,7 @@ void exportimg(TObject * obj, TDirectory * dir, const CanvasCfg & ccfg)
 
 	dir->GetObject(obj->GetName(), can);
 
-	can->Draw();
+	can->Update();
 	can->SetCanvasSize(ccfg.w, ccfg.h);
 	std::cout << "Exporting " << can->GetName() << " w=" << ccfg.w << " h=" << ccfg.h << std::endl;
 

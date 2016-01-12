@@ -90,7 +90,7 @@ Let's have a root file foo.root with three canvases inside:
  can_bar2
  can_bar3
 
-We want to export arr with width of 2000 but only can_bar2 with 3000, then we write:
+We want to export all with width of 2000 but only can_bar2 with 3000, then we write:
 
  * w=2000
  can_bar2 w=3000
