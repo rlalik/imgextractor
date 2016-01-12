@@ -66,7 +66,7 @@ void exportimg(TObject * obj, TDirectory * dir, const CanvasCfg & ccfg)
 
 	can->Draw();
 	can->SetCanvasSize(ccfg.w, ccfg.h);
-	std::cout << "Exporting " << can->GetName() << std::endl;
+	std::cout << "Exporting " << can->GetName() << " w=" << ccfg.w << " h=" << ccfg.h << std::endl;
 
 	if (flag_png) RootTools::ExportPNG((TCanvas*)can, outpath);
 	if (flag_eps) RootTools::ExportEPS((TCanvas*)can, outpath);
@@ -111,9 +111,9 @@ void browseDir(TDirectory * dir, FilterState & fs, const FilterMap & filter_map)
 				{
 					if (fit->second.cnt < 0)
 						continue;
+					ccfg = fit->second;
 				}
 
-				ccfg = fit->second;
 				exportimg(obj, dir, ccfg);
 			}
 			else
@@ -292,13 +292,14 @@ bool extractor(const std::string & file)
 
 	browseDir(f, local_filter, local_map);
 
+	f->Close();
 	std::cout << "Total: " << counter << std::endl;
 	return true;
 }
 
 int main(int argc, char ** argv) {
 	TROOT AnalysisDST_Cal1("TreeAnalysis","compiled analysisDST macros");
-	TApplication app("treeanal", NULL, NULL, NULL, 0);
+	TApplication app();
 	gROOT->SetBatch();
 
 	struct option lopt[] =
