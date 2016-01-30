@@ -22,6 +22,20 @@
 
 #include <TString.h>
 
+#include <map>
+
+struct CanvasCfg
+{
+// 	std::string cn;
+	int cnt;
+	int w;
+	int h;
+};
+
+enum FilterState { FS_None, FS_Modify, FS_Exclusive };
+typedef std::map<std::string, CanvasCfg> FilterMap;
+
+FilterState parser(const std::string & fname, FilterMap & local_fm, const CanvasCfg & default_cfg);
 TString generate_cfg_name(const TString & str);
 
 #endif // FUNCTIONS_H
