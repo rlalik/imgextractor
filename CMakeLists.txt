@@ -41,14 +41,17 @@ include(${ROOT_USE_FILE})
 find_package(RootTools)
 
 ##### directories
-include_directories(${ROOT_INCLUDE_DIR} ${ROOTTOOLS_INCLUDE_DIR})
+include_directories(${ROOT_INCLUDE_DIR} ${ROOTTOOLS_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 link_directories(${ROOT_LIBRARIES_DIR} ${ROOTTOOLS_LIBRARY_DIR})
 
-set(imgextractor_SRCS imgextract.cpp)
+set(imgextractor_SRCS imgextract.cpp functions.cpp)
 
 add_executable(imgextractor ${imgextractor_SRCS})
 
 target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES} jsoncpp)
+
+enable_testing()
+add_subdirectory(tests)
 
 # ${${BIN_PREFIX}_corrdet}
 install(TARGETS

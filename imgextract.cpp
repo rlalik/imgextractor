@@ -20,12 +20,17 @@
 
 #include <RootTools.h>
 
+#include "functions.h"
+
 #include <iostream>
 #define PR(x) std::cout << "++DEBUG: " << #x << " = |" << x << "| (" << __FILE__ << ", " << __LINE__ << ")\n";
 
 int flag_png;
 int flag_eps;
 int flag_pdf;
+int flag_gencfg;
+TString par_gencfg;
+ofstream ofstr_gencfg;
 
 int flag_width = 800;
 int flag_height = 600;
@@ -64,8 +69,9 @@ void exportimg(TObject * obj, TDirectory * dir, const CanvasCfg & ccfg)
 
 	dir->GetObject(obj->GetName(), can);
 
-	can->Update();
+	can->Draw();
 	can->SetCanvasSize(ccfg.w, ccfg.h);
+
 	std::cout << "Exporting " << can->GetName() << " w=" << ccfg.w << " h=" << ccfg.h << std::endl;
 
 	if (flag_png) RootTools::ExportPNG((TCanvas*)can, outpath);
@@ -90,6 +96,17 @@ void browseDir(TDirectory * dir, FilterState & fs, const FilterMap & filter_map)
 		else
 		if (obj->InheritsFrom("TCanvas"))
 		{
+			if (flag_gencfg)
+			{
+				TCanvas * can = (TCanvas*)obj;
+				can->Draw();
+				if (ofstr_gencfg.is_open())
+					ofstr_gencfg << obj->GetName() << "\t" <<
+						"w=" << can->GetWindowWidth() << " " <<
+						"h=" << can->GetWindowHeight() << std::endl;
+				continue;
+			}
+
 			CanvasCfg ccfg = { 1, flag_width, flag_height };
 			FilterMap::const_iterator fit = filter_map.find(obj->GetName());
 			bool found_fit = ( fit != filter_map.end() );
@@ -260,47 +277,58 @@ bool extractor(const std::string & file)
 		return false;
 	}
 
-	TSystem sys;
-
-	std::string dir_name = sys.DirName(file.c_str());
-	std::string file_basename = sys.BaseName(file.c_str());
-
-	size_t last_dot = file_basename.find_last_of('.');
-// 	size_t ext_len = file_basename.end() - last_dot;
-	std::string imgcfg_name = dir_name + "/." + file_basename.replace(last_dot, std::string::npos, ".iecfg");
-
-	FilterState local_filter = global_filter;
-	FilterMap local_map = global_map;
-
-	if (!global_map.size())
+	if (flag_gencfg)
 	{
-		local_filter = parser(imgcfg_name, local_map);
+		if (par_gencfg.Length() == 0)
+		par_gencfg = generate_cfg_name(file);
+
+		ofstr_gencfg.open(par_gencfg.Data());
+
+		f->cd();
+		FilterState local_filter = FS_None;
+		browseDir(f, local_filter, global_map);
+		ofstr_gencfg.close();
 	}
-
-	std::cout << "Maps summary for mode " << local_filter << std::endl;
-	FilterMap & total_map = local_map;
-
-	for (FilterMap::const_iterator it = total_map.begin(); it != total_map.end(); ++it)
+	else
 	{
-		if (it->second.cnt > 0)
-			std::cout << " " << it->first << " [" << it->second.cnt << "] w = " << it->second.w << " h = " << it->second.h << std::endl;
-		else
-			std::cout << " " << it->first << " [" << it->second.cnt << "] " << std::endl;
+		std::string imgcfg_name = generate_cfg_name(file).Data();
+
+		FilterState local_filter = global_filter;
+		FilterMap local_map = global_map;
+
+		if (!global_map.size())
+		{
+			local_filter = parser(imgcfg_name, local_map);
+		}
+
+		std::cout << "Maps summary for mode " << local_filter << std::endl;
+		FilterMap & total_map = local_map;
+
+		for (FilterMap::const_iterator it = total_map.begin(); it != total_map.end(); ++it)
+		{
+			if (it->second.cnt > 0)
+				std::cout << " " << it->first << " [" << it->second.cnt << "] w = " << it->second.w << " h = " << it->second.h << std::endl;
+			else
+				std::cout << " " << it->first << " [" << it->second.cnt << "] " << std::endl;
+		}
+
+		f->cd();
+
+		browseDir(f, local_filter, local_map);
+
+		f->Close();
+		std::cout << "Total: " << counter << std::endl;
 	}
-
-	f->cd();
-
-	browseDir(f, local_filter, local_map);
-
-	f->Close();
-	std::cout << "Total: " << counter << std::endl;
-	return true;
+		return true;
 }
 
-int main(int argc, char ** argv) {
+int main(int argc, char ** argv)
+{
 	TROOT AnalysisDST_Cal1("TreeAnalysis","compiled analysisDST macros");
 	TApplication app();
 	gROOT->SetBatch();
+
+	flag_gencfg = false;
 
 	struct option lopt[] =
 		{
@@ -311,15 +339,17 @@ int main(int argc, char ** argv) {
 			{"width",		required_argument,	0,		'w'},
 			{"height",		required_argument,	0,		'h'},
 			{"filter",		required_argument,	0,		'f'},
+			{"gencfg",		no_argument,		0,		'g'},
 			{ 0, 0, 0, 0 }
 		};
 
 
 	Int_t c = 0;
-	while (1) {
+	while (1)
+	{
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "d:w:h:f:", lopt, &option_index);
+		c = getopt_long(argc, argv, "d:w:h:f:g", lopt, &option_index);
 		if (c == -1)
 			break;
 
@@ -346,6 +376,13 @@ int main(int argc, char ** argv) {
 				{
 					CanvasCfg cc = { 99, flag_width, flag_height };
 					global_map[optarg] = cc;
+				}
+				break;
+			case 'g':
+				flag_gencfg = true;
+				if (optarg)
+				{
+					par_gencfg = optarg;
 				}
 				break;
 			case '?':
