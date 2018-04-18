@@ -4,6 +4,7 @@
 
 #include <TCanvas.h>
 #include <TFile.h>
+#include <TGaxis.h>
 #include <TKey.h>
 #include <TROOT.h>
 #include <TF1.h>
@@ -185,6 +186,9 @@ int main(int argc, char ** argv)
 
 	flag_gencfg = false;
 
+	std::string text_format = ".5g";
+	int max_num_digits = 3;
+
 	struct option lopt[] =
 		{
 			{"png",			no_argument,		&flag_png,	1},
@@ -195,6 +199,8 @@ int main(int argc, char ** argv)
 			{"height",		required_argument,	0,		'h'},
 			{"filter",		required_argument,	0,		'f'},
 			{"gencfg",		no_argument,		0,		'g'},
+			{"fmt",			required_argument,	0,		'm'},
+			{"maxdig",		required_argument,	0,		'n'},
 			{ 0, 0, 0, 0 }
 		};
 
@@ -204,7 +210,7 @@ int main(int argc, char ** argv)
 	{
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "d:w:h:f:g", lopt, &option_index);
+		c = getopt_long(argc, argv, "d:w:h:f:gm:n:", lopt, &option_index);
 		if (c == -1)
 			break;
 
@@ -240,6 +246,12 @@ int main(int argc, char ** argv)
 					par_gencfg = optarg;
 				}
 				break;
+			case 'm':
+				text_format = optarg;
+				break;
+			case 'n':
+				max_num_digits = atoi(optarg);
+				break;
 			case '?':
 // 				Usage();
 				exit(EXIT_SUCCESS);
@@ -251,6 +263,9 @@ int main(int argc, char ** argv)
 				break;
 		}
 	}
+
+	gStyle->SetPaintTextFormat(text_format.c_str());
+	TGaxis::SetMaxDigits(max_num_digits);
 
 	target = gDirectory;
 
