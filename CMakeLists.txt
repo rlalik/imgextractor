@@ -51,7 +51,7 @@ add_executable(imgextractor ${imgextractor_SRCS})
 target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES} jsoncpp)
 
 enable_testing()
-add_subdirectory(tests)
+#add_subdirectory(tests)
 
 # ${${BIN_PREFIX}_corrdet}
 install(TARGETS
