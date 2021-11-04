@@ -26,6 +26,7 @@
 
 struct CanvasCfg
 {
+	bool override{false};
 // 	std::string cn;
 	int cnt;
 	int w;

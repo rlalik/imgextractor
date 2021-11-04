@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 project(ImgExtractor CXX)
 set(CAPS_PROJECT_NAME IMGEXTRACTOR)
 
+cmake_policy(SET CMP0060 NEW)
+
 ##### the version number
 set (VERSION_MAJOR 0)
 set (VERSION_MINOR 1)
@@ -33,7 +35,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 ##### find ROOT
 list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
 find_package(ROOT QUIET
-	REQUIRED COMPONENTS Core  RIO Net Hist Graf Graf3d Gpad Tree Rint Postscript Matrix Physics MathCore Thread
+	REQUIRED COMPONENTS Core Gpad
 	OPTIONAL_COMPONENTS Cling Cint)
 
 include(${ROOT_USE_FILE})
@@ -41,14 +43,13 @@ include(${ROOT_USE_FILE})
 find_package(RootTools)
 
 ##### directories
-include_directories(${ROOT_INCLUDE_DIR} ${ROOTTOOLS_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-link_directories(${ROOT_LIBRARIES_DIR} ${ROOTTOOLS_LIBRARY_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(imgextractor_SRCS imgextract.cpp functions.cpp)
 
 add_executable(imgextractor ${imgextractor_SRCS})
 
-target_link_libraries(imgextractor RootTools ASImage ${ROOT_LIBRARIES} jsoncpp)
+target_link_libraries(imgextractor RT::RootTools ROOT::Gpad ROOT::ASImage jsoncpp)
 
 enable_testing()
 #add_subdirectory(tests)

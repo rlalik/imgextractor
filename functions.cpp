@@ -128,8 +128,10 @@ FilterState parser(const std::string & fname, FilterMap & local_fm, const Canvas
 						pos = buff.find_first_not_of("0123456789", pos+2);
 						std::string number = buff.substr(old_pos, pos - old_pos);
 						int val_tmp = atoi(number.c_str());
-						if (val_tmp)
-								inline_cancfg.w = val_tmp;
+						if (val_tmp) {
+							inline_cancfg.w = val_tmp;
+							inline_cancfg.override = true;
+						}
 					}
 					else
 					{
@@ -145,8 +147,10 @@ FilterState parser(const std::string & fname, FilterMap & local_fm, const Canvas
 						pos = buff.find_first_not_of("0123456789", pos+2);
 						std::string number = buff.substr(old_pos, pos - old_pos);
 						int val_tmp = atoi(number.c_str());
-						if (val_tmp)
+						if (val_tmp) {
 							inline_cancfg.h = val_tmp;
+							inline_cancfg.override = true;
+						}
 					}
 					else
 					{

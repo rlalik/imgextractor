@@ -52,14 +52,16 @@ void exportimg(TObject * obj, TDirectory * dir, const CanvasCfg & ccfg)
     dir->GetObject(obj->GetName(), can);
 
     can->Draw();
-    can->SetCanvasSize(ccfg.w, ccfg.h);
+    if (ccfg.override) {
+        can->SetCanvasSize(ccfg.w, ccfg.h);
+    }
 
     std::cout << "Exporting " << can->GetName() << " w=" << ccfg.w << " h=" << ccfg.h << std::endl;
 
-    if (flag_png) RootTools::ExportPNG((TCanvas*)can, outpath);
-    if (flag_eps) RootTools::ExportEPS((TCanvas*)can, outpath);
-    if (flag_pdf) RootTools::ExportPDF((TCanvas*)can, outpath);
-    if (flag_macro) RootTools::ExportMacroC((TCanvas*)can, outpath);
+    if (flag_png) RT::ExportPNG((TCanvas*)can, outpath);
+    if (flag_eps) RT::ExportEPS((TCanvas*)can, outpath);
+    if (flag_pdf) RT::ExportPDF((TCanvas*)can, outpath);
+    if (flag_macro) RT::ExportMacroC((TCanvas*)can, outpath);
     ++counter;
 }
 
@@ -90,7 +92,7 @@ void browseDir(TDirectory * dir, FilterState & fs, const FilterMap & filter_map)
                 continue;
             }
 
-            CanvasCfg ccfg = { 1, flag_width, flag_height };
+            CanvasCfg ccfg = {false, 1, flag_width, flag_height };
             FilterMap::const_iterator fit = filter_map.find(obj->GetName());
             bool found_fit = ( fit != filter_map.end() );
 
@@ -153,7 +155,7 @@ bool extractor(const std::string & file)
         FilterState local_filter = global_filter;
         FilterMap local_map = global_map;
 
-        CanvasCfg can_def = {1, flag_width, flag_height };
+        CanvasCfg can_def = {false, 1, flag_width, flag_height };
         if (!global_map.size())
         {
             local_filter = parser(imgcfg_name, local_map, can_def);
@@ -196,7 +198,7 @@ int main(int argc, char ** argv)
             {"png",            no_argument,        &flag_png,    1},
             {"eps",            no_argument,        &flag_eps,    1},
             {"pdf",            no_argument,        &flag_pdf,    1},
-            {"C",            no_argument,        &flag_macro,1},
+            {"C",              no_argument,        &flag_macro,  1},
             {"dir",            required_argument,    0,        'd'},
             {"width",        required_argument,    0,        'w'},
             {"height",        required_argument,    0,        'h'},
@@ -238,7 +240,7 @@ int main(int argc, char ** argv)
             case 'f':
                 global_filter = FS_Exclusive;
                 {
-                    CanvasCfg cc = { 99, flag_width, flag_height };
+                    CanvasCfg cc = { false, 99, flag_width, flag_height };
                     global_map[optarg] = cc;
                 }
                 break;
@@ -272,8 +274,8 @@ int main(int argc, char ** argv)
 
     target = gDirectory;
 
-    RootTools::NicePalette();
-    RootTools::MyMath();
+    RT::NicePalette();
+    RT::MyMath();
 
     if ( ! (flag_png | flag_eps | flag_pdf | flag_macro) )
         flag_png = 1;
